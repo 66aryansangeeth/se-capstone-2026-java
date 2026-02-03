@@ -1,0 +1,49 @@
+server:
+  port: 8080
+
+application:
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY}
+
+spring:
+  data:
+    redis:
+      host: {REDIS-HOST}
+      port: 6379 # Run: podman run -d -p 6379:6379 redis
+  cloud:
+    gateway:
+      routes:
+        # PRODUCT SERVICE (High Limit for browsing)
+        - id: product-service
+          uri: ${PRODUCT_SERVICE_URL}
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 15
+                key-resolver: "#{@userKeyResolver}"
+
+        # ORDER SERVICE (Low Limit to prevent spam orders)
+        - id: order-service
+          uri: ${ORDER_SERVICE_URL}
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 3
+                key-resolver: "#{@userKeyResolver}"
+
+        # AUTH SERVICE
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL}
+          predicates:
+            - Path=/api/auth/**
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
