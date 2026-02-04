@@ -1,15 +1,10 @@
 FROM maven:3.8.4-openjdk-17 AS build
 WORKDIR /app
-
-# Copy the entire project instead of just one folder
 COPY . .
-
-# Build only the auth-service
 RUN mvn clean package -pl auth-service -am -DskipTests
 
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /app/auth-service/target/*.jar app.jar
-
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
