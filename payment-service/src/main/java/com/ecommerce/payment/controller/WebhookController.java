@@ -88,7 +88,7 @@ public class WebhookController {
 
     private Mono<Void> notifyOrderService(String orderId) {
         return webClientBuilder.build().patch()
-                .uri(orderServiceUrl + "api/orders/{id}/confirm", orderId)
+                .uri(orderServiceUrl + "/api/orders/{id}/confirm", orderId)
                 .header("X-Internal-Secret", "my-app-secret-123")
                 .retrieve()
                 .bodyToMono(Void.class)
