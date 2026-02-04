@@ -1,0 +1,292 @@
+steps:
+  # Detect which services have changed
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        CHANGED_SERVICES=$(./scripts/detect-changes.sh ${COMMIT_SHA}^ ${COMMIT_SHA} 2>/dev/null || echo "auth-service,product-service,order-service,payment-service,api-gateway")
+        echo "Changed services: $CHANGED_SERVICES"
+        echo "$CHANGED_SERVICES" > /workspace/changed-services.txt
+        # Set flags for each service
+        echo "$CHANGED_SERVICES" | grep -q "auth-service" && echo "true" > /workspace/build-auth.txt || echo "false" > /workspace/build-auth.txt
+        echo "$CHANGED_SERVICES" | grep -q "product-service" && echo "true" > /workspace/build-product.txt || echo "false" > /workspace/build-product.txt
+        echo "$CHANGED_SERVICES" | grep -q "order-service" && echo "true" > /workspace/build-order.txt || echo "false" > /workspace/build-order.txt
+        echo "$CHANGED_SERVICES" | grep -q "payment-service" && echo "true" > /workspace/build-payment.txt || echo "false" > /workspace/build-payment.txt
+        echo "$CHANGED_SERVICES" | grep -q "api-gateway" && echo "true" > /workspace/build-gateway.txt || echo "false" > /workspace/build-gateway.txt
+    id: 'detect-changes'
+    env:
+      - 'COMMIT_SHA=${COMMIT_SHA}'
+
+  # Build and deploy Auth Service (conditional)
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-auth.txt)" = "true" ]; then
+          echo "Building and deploying auth-service..."
+          mvn clean package -DskipTests -f auth-service/pom.xml
+        else
+          echo "Skipping auth-service - no changes detected"
+        fi
+    id: 'build-auth-service'
+    waitFor: ['detect-changes']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-auth.txt)" = "true" ]; then
+          docker build -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/auth-service:${SHORT_SHA} -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/auth-service:latest -f auth-service/Containerfile .
+          docker push ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/auth-service:${SHORT_SHA}
+        else
+          echo "Skipping Docker build for auth-service"
+        fi
+    id: 'docker-auth-service'
+    waitFor: ['build-auth-service']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-auth.txt)" = "true" ]; then
+          gcloud run deploy auth-service \
+            --image ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/auth-service:${SHORT_SHA} \
+            --region ${_REGION} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8081 \
+            --set-env-vars DB_URL=${_DB_URL},DB_USERNAME=${_DB_USERNAME},DB_PASSWORD=${_DB_PASSWORD},JWT_SECRET_KEY=${_JWT_SECRET_KEY} \
+            --memory 512Mi \
+            --cpu 1
+        else
+          echo "Skipping deployment for auth-service"
+        fi
+    id: 'deploy-auth-service'
+    waitFor: ['docker-auth-service']
+
+  # Build and deploy Product Service (conditional)
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-product.txt)" = "true" ]; then
+          echo "Building and deploying product-service..."
+          mvn clean package -DskipTests -f product-service/pom.xml
+        else
+          echo "Skipping product-service - no changes detected"
+        fi
+    id: 'build-product-service'
+    waitFor: ['detect-changes']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-product.txt)" = "true" ]; then
+          docker build -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/product-service:${SHORT_SHA} -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/product-service:latest -f product-service/Containerfile .
+          docker push ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/product-service:${SHORT_SHA}
+        else
+          echo "Skipping Docker build for product-service"
+        fi
+    id: 'docker-product-service'
+    waitFor: ['build-product-service']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-product.txt)" = "true" ]; then
+          gcloud run deploy product-service \
+            --image ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/product-service:${SHORT_SHA} \
+            --region ${_REGION} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8082 \
+            --set-env-vars DB_URL=${_DB_URL},DB_USERNAME=${_DB_USERNAME},DB_PASSWORD=${_DB_PASSWORD},JWT_SECRET_KEY=${_JWT_SECRET_KEY} \
+            --memory 512Mi \
+            --cpu 1
+        else
+          echo "Skipping deployment for product-service"
+        fi
+    id: 'deploy-product-service'
+    waitFor: ['docker-product-service']
+
+  # Build and deploy Order Service (conditional)
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-order.txt)" = "true" ]; then
+          echo "Building and deploying order-service..."
+          mvn clean package -DskipTests -f order-service/pom.xml
+        else
+          echo "Skipping order-service - no changes detected"
+        fi
+    id: 'build-order-service'
+    waitFor: ['detect-changes']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-order.txt)" = "true" ]; then
+          docker build -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/order-service:${SHORT_SHA} -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/order-service:latest -f order-service/Containerfile .
+          docker push ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/order-service:${SHORT_SHA}
+        else
+          echo "Skipping Docker build for order-service"
+        fi
+    id: 'docker-order-service'
+    waitFor: ['build-order-service']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-order.txt)" = "true" ]; then
+          gcloud run deploy order-service \
+            --image ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/order-service:${SHORT_SHA} \
+            --region ${_REGION} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8083 \
+            --set-env-vars DB_URL=${_DB_URL},DB_USERNAME=${_DB_USERNAME},DB_PASSWORD=${_DB_PASSWORD},JWT_SECRET_KEY=${_JWT_SECRET_KEY},PRODUCT_SERVICE_URL=${_PRODUCT_SERVICE_URL},PAYMENT_SERVICE_URL=${_PAYMENT_SERVICE_URL},STRIPE_SECRET_KEY=${_STRIPE_SECRET_KEY} \
+            --memory 512Mi \
+            --cpu 1
+        else
+          echo "Skipping deployment for order-service"
+        fi
+    id: 'deploy-order-service'
+    waitFor: ['docker-order-service']
+
+  # Build and deploy Payment Service (conditional)
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-payment.txt)" = "true" ]; then
+          echo "Building and deploying payment-service..."
+          mvn clean package -DskipTests -f payment-service/pom.xml
+        else
+          echo "Skipping payment-service - no changes detected"
+        fi
+    id: 'build-payment-service'
+    waitFor: ['detect-changes']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-payment.txt)" = "true" ]; then
+          docker build -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/payment-service:${SHORT_SHA} -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/payment-service:latest -f payment-service/Containerfile .
+          docker push ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/payment-service:${SHORT_SHA}
+        else
+          echo "Skipping Docker build for payment-service"
+        fi
+    id: 'docker-payment-service'
+    waitFor: ['build-payment-service']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-payment.txt)" = "true" ]; then
+          gcloud run deploy payment-service \
+            --image ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/payment-service:${SHORT_SHA} \
+            --region ${_REGION} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8084 \
+            --set-env-vars DB_URL=${_DB_URL},DB_USERNAME=${_DB_USERNAME},DB_PASSWORD=${_DB_PASSWORD},JWT_SECRET_KEY=${_JWT_SECRET_KEY},ORDER_SERVICE_URL=${_ORDER_SERVICE_URL},STRIPE_SECRET_KEY=${_STRIPE_SECRET_KEY},STRIPE_WEBHOOK_SECRET=${_STRIPE_WEBHOOK_SECRET} \
+            --memory 512Mi \
+            --cpu 1
+        else
+          echo "Skipping deployment for payment-service"
+        fi
+    id: 'deploy-payment-service'
+    waitFor: ['docker-payment-service']
+
+  # Build and deploy API Gateway (conditional)
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-gateway.txt)" = "true" ]; then
+          echo "Building and deploying api-gateway..."
+          mvn clean package -DskipTests -f api-gateway/pom.xml
+        else
+          echo "Skipping api-gateway - no changes detected"
+        fi
+    id: 'build-api-gateway'
+    waitFor: ['detect-changes']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-gateway.txt)" = "true" ]; then
+          docker build -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/api-gateway:${SHORT_SHA} -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/api-gateway:latest -f api-gateway/Containerfile .
+          docker push ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/api-gateway:${SHORT_SHA}
+        else
+          echo "Skipping Docker build for api-gateway"
+        fi
+    id: 'docker-api-gateway'
+    waitFor: ['build-api-gateway']
+
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$(cat /workspace/build-gateway.txt)" = "true" ]; then
+          gcloud run deploy api-gateway \
+            --image ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/api-gateway:${SHORT_SHA} \
+            --region ${_REGION} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --set-env-vars JWT_SECRET_KEY=${_JWT_SECRET_KEY},AUTH_SERVICE_URL=${_AUTH_SERVICE_URL},PRODUCT_SERVICE_URL=${_PRODUCT_SERVICE_URL},ORDER_SERVICE_URL=${_ORDER_SERVICE_URL},REDIS_HOST=${_REDIS_HOST} \
+            --memory 512Mi \
+            --cpu 1
+        else
+          echo "Skipping deployment for api-gateway"
+        fi
+    id: 'deploy-api-gateway'
+    waitFor: ['docker-api-gateway']
+
+# Substitution variables (set these in Cloud Build triggers or via gcloud)
+substitutions:
+  _PROJECT_ID: 'your-project-id'
+  _REGION: 'us-central1'
+  _ARTIFACT_REGISTRY_REPO: 'ecommerce-repo'
+  _DB_URL: 'jdbc:postgresql://your-db-host:5432/your-db-name'
+  _DB_USERNAME: 'your-db-username'
+  _DB_PASSWORD: 'your-db-password'
+  _JWT_SECRET_KEY: 'your-jwt-secret-key'
+  _AUTH_SERVICE_URL: 'https://auth-service-xxxxx-uc.a.run.app'
+  _PRODUCT_SERVICE_URL: 'https://product-service-xxxxx-uc.a.run.app'
+  _ORDER_SERVICE_URL: 'https://order-service-xxxxx-uc.a.run.app'
+  _PAYMENT_SERVICE_URL: 'https://payment-service-xxxxx-uc.a.run.app'
+  _STRIPE_SECRET_KEY: 'your-stripe-secret-key'
+  _STRIPE_WEBHOOK_SECRET: 'your-stripe-webhook-secret'
+  _REDIS_HOST: 'your-redis-host'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '3600s'
