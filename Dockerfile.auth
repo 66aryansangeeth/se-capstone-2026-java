@@ -1,9 +1,10 @@
 FROM maven:3.8.4-openjdk-17 AS build
 WORKDIR /app
 
-COPY pom.xml .
-COPY auth-service ./auth-service
+# Copy the entire project instead of just one folder
+COPY . .
 
+# Build only the auth-service
 RUN mvn clean package -pl auth-service -am -DskipTests
 
 FROM openjdk:17-jdk-slim
