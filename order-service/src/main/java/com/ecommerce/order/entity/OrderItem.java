@@ -21,7 +21,7 @@ public class OrderItem {
     private BigDecimal priceAtPurchase;
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal itemSubtotal; // <--- Subtotal for THIS specific product
+    private BigDecimal itemSubtotal;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
