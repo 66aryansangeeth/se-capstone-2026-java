@@ -35,10 +35,13 @@ public class WebhookController {
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
 
+        log.info("Log 1: Webhook endpoint hit with signature: {}", sigHeader);
+
         try {
             Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
             EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
             String eventType = event.getType();
+            log.info("Log 2: Stripe Event verified. Type: {}", eventType);
 
             if ("checkout.session.completed".equals(eventType)) {
                 return dataObjectDeserializer.getObject()
@@ -59,7 +62,7 @@ public class WebhookController {
                             return notifyOrderService(orderId, "cancel");
                         }).orElse(Mono.empty());
             }
-
+            log.info("Log 5: Event type {} is not handled by this webhook.", eventType);
             return Mono.empty();
         } catch (SignatureVerificationException e) {
             log.error("Webhook signature verification failed!");
@@ -81,8 +84,10 @@ public class WebhookController {
 
 
     private Mono<Void> notifyOrderService(String orderId, String action) {
+        String finalUrl = orderServiceUrl + "/api/orders/" + orderId + "/" + action;
+        log.info("Log 6: Preparing PATCH request. URL: {} | Secret: my-app-secret-123", finalUrl);
         return webClientBuilder.build().patch()
-                .uri(orderServiceUrl + "/api/orders/{id}/" + action, orderId)
+                .uri(finalUrl)
                 .header("X-Internal-Secret", "my-app-secret-123")
                 .retrieve()
                 .bodyToMono(Void.class)

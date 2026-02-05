@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(org.springframework.http.HttpMethod.PATCH, "/api/orders/*/confirm").permitAll()
+                        .pathMatchers(org.springframework.http.HttpMethod.PATCH, "/api/orders/*/cancel").permitAll()
 
                         .pathMatchers("/api/orders/**").authenticated()
 
