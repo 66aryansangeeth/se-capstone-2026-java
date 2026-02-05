@@ -7,6 +7,7 @@ import com.ecommerce.payment.repository.PaymentRepository;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -19,6 +20,8 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class PaymentService {
     private final PaymentRepository paymentRepository;
+    @Value("${application.order-service.url}")
+    private String orderUrl;
 
     public Mono<String> createCheckoutSession(PaymentRequest request) {
         log.info("DEBUG: Incoming PaymentRequest -> Email: [{}]",
@@ -27,8 +30,8 @@ public class PaymentService {
             SessionCreateParams params = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.PAYMENT)
                     .setCustomerEmail(request.customerEmail())
-                    .setSuccessUrl("http://localhost:8083/api/orders/success")
-                    .setCancelUrl("http://localhost:8083/api/orders/cancel")
+                    .setSuccessUrl(orderUrl +"/api/orders/my-orders")
+                    .setCancelUrl(orderUrl +"/api/orders/my-orders")
                     .addLineItem(SessionCreateParams.LineItem.builder()
                             .setQuantity(1L)
                             .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
@@ -39,6 +42,11 @@ public class PaymentService {
                                     .build())
                             .build())
                     .putMetadata("orderId", request.orderId().toString())
+                    .setPaymentIntentData(
+                            SessionCreateParams.PaymentIntentData.builder()
+                                    .putMetadata("orderId", request.orderId().toString())
+                                    .build()
+                    )
                     .build();
 
             Session session = Session.create(params);
