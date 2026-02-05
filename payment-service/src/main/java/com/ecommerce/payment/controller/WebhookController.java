@@ -35,43 +35,36 @@ public class WebhookController {
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
 
-        return Mono.fromCallable(() -> {
-                    try {
-                        Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
-                        String eventType = event.getType();
+        try {
+            Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
+            EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+            String eventType = event.getType();
 
-                        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+            if ("checkout.session.completed".equals(eventType)) {
+                return dataObjectDeserializer.getObject()
+                        .map(stripeObject -> {
+                            Session session = (Session) stripeObject;
+                            String orderId = session.getMetadata().get("orderId");
+                            log.info("Payment SUCCESS received for Order ID: {}", orderId);
+                            return processSuccess(session.getId(), orderId, session.getPaymentIntent());
+                        }).orElse(Mono.empty());
+            }
 
+            if ("payment_intent.payment_failed".equals(eventType)) {
+                return dataObjectDeserializer.getObject()
+                        .map(stripeObject -> {
+                            com.stripe.model.PaymentIntent intent = (com.stripe.model.PaymentIntent) stripeObject;
+                            String orderId = intent.getMetadata().get("orderId");
+                            log.warn("Payment FAILED received for Order ID: {}", orderId);
+                            return notifyOrderService(orderId, "cancel");
+                        }).orElse(Mono.empty());
+            }
 
-                        if ("checkout.session.completed".equals(eventType)) {
-                            return dataObjectDeserializer.getObject()
-                                    .map(stripeObject -> {
-                                        Session session = (Session) stripeObject;
-                                        String orderId = session.getMetadata().get("orderId");
-                                        log.info("Payment SUCCESS received for Order ID: {}", orderId);
-                                        return processSuccess(session.getId(), orderId, session.getPaymentIntent());
-                                    }).orElse(Mono.empty());
-                        }
-
-                        else if ("payment_intent.payment_failed".equals(eventType)) {
-                            return dataObjectDeserializer.getObject()
-                                    .map(stripeObject -> {
-                                        com.stripe.model.PaymentIntent intent = (com.stripe.model.PaymentIntent) stripeObject;
-                                        String orderId = intent.getMetadata().get("orderId");
-                                        log.warn("Payment FAILED received for Order ID: {}", orderId);
-                                        return notifyOrderService(orderId, "cancel");
-                                    }).orElse(Mono.empty());
-                        }
-
-                        return Mono.empty();
-                    } catch (SignatureVerificationException e) {
-                        log.error("Webhook signature verification failed!");
-                        return Mono.error(e);
-                    }
-                })
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(result -> (Mono<?>) result)
-                .then();
+            return Mono.empty();
+        } catch (SignatureVerificationException e) {
+            log.error("Webhook signature verification failed!");
+            return Mono.error(e);
+        }
     }
 
     private Mono<Void> processSuccess(String sessionId, String orderId, String paymentIntentId) {
