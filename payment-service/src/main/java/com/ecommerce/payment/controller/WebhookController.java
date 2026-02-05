@@ -38,30 +38,31 @@ public class WebhookController {
         return Mono.fromCallable(() -> {
                     try {
                         Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
+                        String eventType = event.getType();
 
-                        if ("checkout.session.completed".equals(event.getType())) {
-                            EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+                        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
 
-                            Session session = dataObjectDeserializer.getObject()
-                                    .map(stripeObject -> (Session) stripeObject)
-                                    .orElseGet(() -> {
-                                        try {
-                                            return (Session) dataObjectDeserializer.deserializeUnsafe();
-                                        } catch (Exception e) {
-                                            log.error("Critical error: Could not deserialize Stripe session: {}", e.getMessage());
-                                            return null;
-                                        }
-                                    });
 
-                            if (session != null) {
-                                String sessionId = session.getId();
-                                String orderId = session.getMetadata().get("orderId");
-                                String paymentIntentId = session.getPaymentIntent();
-
-                                log.info("Webhook received successfully for Order ID: {}", orderId);
-                                return processSuccess(sessionId, orderId, paymentIntentId);
-                            }
+                        if ("checkout.session.completed".equals(eventType)) {
+                            return dataObjectDeserializer.getObject()
+                                    .map(stripeObject -> {
+                                        Session session = (Session) stripeObject;
+                                        String orderId = session.getMetadata().get("orderId");
+                                        log.info("Payment SUCCESS received for Order ID: {}", orderId);
+                                        return processSuccess(session.getId(), orderId, session.getPaymentIntent());
+                                    }).orElse(Mono.empty());
                         }
+
+                        else if ("payment_intent.payment_failed".equals(eventType)) {
+                            return dataObjectDeserializer.getObject()
+                                    .map(stripeObject -> {
+                                        com.stripe.model.PaymentIntent intent = (com.stripe.model.PaymentIntent) stripeObject;
+                                        String orderId = intent.getMetadata().get("orderId");
+                                        log.warn("Payment FAILED received for Order ID: {}", orderId);
+                                        return notifyOrderService(orderId, "cancel");
+                                    }).orElse(Mono.empty());
+                        }
+
                         return Mono.empty();
                     } catch (SignatureVerificationException e) {
                         log.error("Webhook signature verification failed!");
@@ -79,19 +80,20 @@ public class WebhookController {
                         payment.setStatus(PaymentStatus.SUCCEEDED);
                         payment.setPaymentIntentId(paymentIntentId);
                         paymentRepository.save(payment);
-                        log.info("Local payment record updated for Session: {}", sessionId);
                     });
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .then(notifyOrderService(orderId));
+                .then(notifyOrderService(orderId, "confirm"));
     }
 
-    private Mono<Void> notifyOrderService(String orderId) {
+
+    private Mono<Void> notifyOrderService(String orderId, String action) {
         return webClientBuilder.build().patch()
-                .uri(orderServiceUrl + "/api/orders/{id}/confirm", orderId)
+                .uri(orderServiceUrl + "/api/orders/{id}/" + action, orderId)
                 .header("X-Internal-Secret", "my-app-secret-123")
                 .retrieve()
                 .bodyToMono(Void.class)
+                .doOnError(e -> log.error("Failed to notify Order Service for {}: {}", action, e.getMessage()))
                 .then();
     }
 }

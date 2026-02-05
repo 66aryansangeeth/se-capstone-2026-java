@@ -55,4 +55,15 @@ public class OrderController {
         }
         return orderService.confirmOrder(id);
     }
+
+    @PatchMapping("/{id}/cancel")
+    public Mono<Void> cancelOrder(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-Internal-Secret", required = false) String secret) {
+
+        if (!"my-app-secret-123".equals(secret)) {
+            return Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        }
+        return orderService.cancelOrder(id);
+    }
 }

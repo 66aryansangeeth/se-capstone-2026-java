@@ -88,6 +88,18 @@ public class OrderService {
                 })
                 .then();
     }
+
+    @Transactional
+    public Mono<Void> cancelOrder(Long id) {
+        return Mono.fromCallable(() -> {
+            Order order = orderRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Order not found"));
+            order.setStatus(OrderStatus.CANCELLED);
+            return orderRepository.save(order);
+        })
+                .subscribeOn(Schedulers.boundedElastic())
+                .then();
+    }
     @Transactional
     protected Mono<Order> saveFullOrder(List<ValidatedItem> validatedItems, String userEmail, String payStatus, OrderStatus orderStatus) {
         return Mono.fromCallable(() -> {

@@ -12,7 +12,6 @@ public class RateLimiterConfig {
 
     @Bean
     public KeyResolver userKeyResolver() {
-        // Limit based on the authenticated username
         return exchange -> exchange.getPrincipal()
                 .map(Principal::getName)
                 .defaultIfEmpty("anonymous");
