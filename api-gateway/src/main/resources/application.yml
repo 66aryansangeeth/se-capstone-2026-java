@@ -21,6 +21,12 @@ spring:
       port: ${REDIS_PORT}
   cloud:
     gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
       routes:
         # PRODUCT SERVICE
         - id: product-service
