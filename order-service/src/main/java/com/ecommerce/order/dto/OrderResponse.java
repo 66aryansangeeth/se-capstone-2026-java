@@ -8,7 +8,7 @@ public record OrderResponse(
         Long orderId,
         String userEmail,
         List<OrderItemResponse> items, // The detailed list
-        BigDecimal totalAmount,
+        Long totalAmount,
         String status,
         LocalDateTime orderDate,
         String checkoutUrl

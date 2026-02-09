@@ -18,10 +18,10 @@ public class OrderItem {
     private Integer quantity;
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal priceAtPurchase;
+    private Long priceAtPurchase;
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal itemSubtotal;
+    private Long itemSubtotal;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
@@ -30,7 +30,7 @@ public class OrderItem {
     @PrePersist
     public void calculateItemSubtotal() {
         if (priceAtPurchase != null && quantity != null) {
-            this.itemSubtotal = priceAtPurchase.multiply(BigDecimal.valueOf(quantity));
+            this.itemSubtotal = priceAtPurchase * quantity;
         }
     }
 }

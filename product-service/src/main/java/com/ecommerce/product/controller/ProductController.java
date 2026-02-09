@@ -3,6 +3,7 @@ package com.ecommerce.product.controller;
 
 import com.ecommerce.product.dto.ProductRequest;
 import com.ecommerce.product.dto.ProductResponse;
+import com.ecommerce.product.dto.SearchRequest;
 import com.ecommerce.product.entity.Product;
 import com.ecommerce.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,11 @@ public class ProductController {
     @ResponseStatus(HttpStatus.OK)
     public void updateProduct(@PathVariable Long id, @RequestBody ProductRequest request) {
         productService.updateProduct(id, request);
+    }
+    @PostMapping("/search")
+    @ResponseStatus(HttpStatus.OK)
+    public List<ProductResponse> searchProducts(@RequestBody SearchRequest request) {
+        return productService.searchProducts(request);
     }
 
     @PatchMapping("/{id}/reduce-stock")

@@ -36,7 +36,7 @@ public class PaymentService {
                             .setQuantity(1L)
                             .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
                                     .setCurrency("usd")
-                                    .setUnitAmount(request.amount().multiply(new BigDecimal(100)).longValue())
+                                    .setUnitAmount(request.amount())
                                     .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                             .setName("Order #" + request.orderId()).build())
                                     .build())

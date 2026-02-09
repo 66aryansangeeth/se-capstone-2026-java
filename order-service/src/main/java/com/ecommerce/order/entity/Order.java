@@ -3,7 +3,6 @@ package com.ecommerce.order.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,18 +21,14 @@ public class Order {
     private Long id;
 
     private String userEmail;
-//    private Long productId;
-//    private Integer quantity;
 
-//    @Column(precision = 10, scale = 2)
-//    private BigDecimal unitPriceAtPurchase;
 @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
 @Builder.Default
 private List<OrderItem> items = new ArrayList<>();
 
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal totalAmount;
+    private Long totalAmount;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
@@ -55,11 +50,10 @@ private List<OrderItem> items = new ArrayList<>();
         calculateTotal();
     }
 
-    // 3. Update the calculation logic
     public void calculateTotal() {
         this.totalAmount = items.stream()
-                .map(item -> item.getPriceAtPurchase().multiply(BigDecimal.valueOf(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .mapToLong(item -> item.getPriceAtPurchase() * item.getQuantity())
+                .sum();
     }
 }
 

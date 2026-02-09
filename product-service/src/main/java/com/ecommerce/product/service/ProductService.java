@@ -2,6 +2,7 @@ package com.ecommerce.product.service;
 
 import com.ecommerce.product.dto.ProductRequest;
 import com.ecommerce.product.dto.ProductResponse;
+import com.ecommerce.product.dto.SearchRequest;
 import com.ecommerce.product.entity.Product;
 import com.ecommerce.product.entity.ProductAudit;
 import com.ecommerce.product.repository.ProductAuditRepository;
@@ -87,6 +88,36 @@ public class ProductService {
         return productRepository.findById(id)
                 .map(this::mapToProductResponse)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
+    }
+    public List<ProductResponse> searchProducts(SearchRequest request) {
+        List<Product> products;
+
+        String name = request.name();
+        String category = request.category();
+
+        // Check if name is provided (trim whitespace)
+        boolean hasName = name != null && !name.trim().isEmpty();
+        // Check if category is provided (trim whitespace)
+        boolean hasCategory = category != null && !category.trim().isEmpty();
+
+        if (hasName && hasCategory) {
+            // Search by both name (partial) and category (exact)
+            products = productRepository.findByNameContainingIgnoreCaseAndCategoryIgnoreCase(
+                    name.trim(), category.trim());
+        } else if (hasName) {
+            // Search by name only (partial search)
+            products = productRepository.findByNameContainingIgnoreCase(name.trim());
+        } else if (hasCategory) {
+            // Search by category only (exact match, case-insensitive)
+            products = productRepository.findByCategoryIgnoreCase(category.trim());
+        } else {
+            // No search criteria provided, return all products
+            products = productRepository.findAll();
+        }
+
+        return products.stream()
+                .map(this::mapToProductResponse)
+                .toList();
     }
 
     @Transactional

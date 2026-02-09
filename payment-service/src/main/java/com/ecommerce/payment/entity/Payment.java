@@ -2,7 +2,6 @@ package com.ecommerce.payment.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -26,7 +25,7 @@ public class Payment {
     private String paymentIntentId;
 
     @Column(nullable = false)
-    private BigDecimal amount;
+    private Long amount;
 
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
