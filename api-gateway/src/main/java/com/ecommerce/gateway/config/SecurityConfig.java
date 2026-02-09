@@ -29,7 +29,7 @@ public class SecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html", "/v3/api-docs/**", "/favicon.ico").permitAll()
+                        .pathMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html", "/v3/api-docs/**", "/favicon.ico", "/swagger-ui.css", "/swagger-ui-bundle.js", "/swagger-ui-standalone-preset.js").permitAll()
                         .pathMatchers("/api/auth/register", "/api/auth/login").permitAll()
                         .pathMatchers("/api/auth/change-password").authenticated()
                         .pathMatchers("/api/auth/admin/**", "/api/auth/admin-reset").hasAuthority("ROLE_ADMIN")
