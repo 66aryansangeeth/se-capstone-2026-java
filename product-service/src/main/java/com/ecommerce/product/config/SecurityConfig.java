@@ -27,6 +27,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .requestMatchers(HttpMethod.PATCH, "/api/products/*/reduce-stock").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/products/search").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

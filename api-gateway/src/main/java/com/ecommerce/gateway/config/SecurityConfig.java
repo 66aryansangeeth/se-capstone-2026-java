@@ -29,11 +29,13 @@ public class SecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .pathMatchers("/api/auth/register", "/api/auth/login").permitAll()
                         .pathMatchers("/api/auth/change-password").authenticated()
                         .pathMatchers("/api/auth/admin/**", "/api/auth/admin-reset").hasAuthority("ROLE_ADMIN")
 
                         .pathMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                        .pathMatchers(HttpMethod.POST,"/api/products/search").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/products/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers(HttpMethod.DELETE, "/api/products/**").hasAuthority("ROLE_ADMIN")

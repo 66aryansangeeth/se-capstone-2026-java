@@ -6,6 +6,14 @@ application:
     jwt:
       secret-key: ${JWT_SECRET_KEY}
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    config-url: ${GATEWAY_URL:http://localhost:8080}/v3/api-docs
+
 spring:
   data:
     redis:

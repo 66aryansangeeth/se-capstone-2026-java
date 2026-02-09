@@ -95,23 +95,17 @@ public class ProductService {
         String name = request.name();
         String category = request.category();
 
-        // Check if name is provided (trim whitespace)
         boolean hasName = name != null && !name.trim().isEmpty();
-        // Check if category is provided (trim whitespace)
         boolean hasCategory = category != null && !category.trim().isEmpty();
 
         if (hasName && hasCategory) {
-            // Search by both name (partial) and category (exact)
             products = productRepository.findByNameContainingIgnoreCaseAndCategoryIgnoreCase(
                     name.trim(), category.trim());
         } else if (hasName) {
-            // Search by name only (partial search)
             products = productRepository.findByNameContainingIgnoreCase(name.trim());
         } else if (hasCategory) {
-            // Search by category only (exact match, case-insensitive)
             products = productRepository.findByCategoryIgnoreCase(category.trim());
         } else {
-            // No search criteria provided, return all products
             products = productRepository.findAll();
         }
 
