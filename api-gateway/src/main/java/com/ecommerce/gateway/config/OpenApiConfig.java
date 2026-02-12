@@ -559,7 +559,6 @@ public class OpenApiConfig {
         schema.addProperty("items", new ArraySchema()
                 .items(createSchemaRef("#/components/schemas/OrderItemRequest"))
                 .description("List of order items"));
-        schema.addProperty("stripePaymentIntentId", new StringSchema().description("Stripe payment intent ID (optional)"));
         schema.setRequired(List.of("items"));
         return schema;
     }
